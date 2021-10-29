@@ -140,6 +140,23 @@ granularity as the fine solvers in parareal) over the entire initial value
 problem. We will also look for real-world applications with real benchmarks to
 meet.
 
+We will also measure the strong and weak scaling of the algorithm. If we adhere
+rigorously the definitions of these teams, this would mean comparing the time
+taken for the parareal algorithm (i.e. with coarse and fine propogators,
+multiple iterations) using different numbers of CPUs. This is not exactly a
+useful metric, since performing the parareal algorithm with a single CPU would
+just be using more computations to obtain the same results (we would be using
+the coarse propogator results at the start of each interval even when we have
+the more accurate fine propogator results available). Consequently, it would be
+a better idea to define some metrics "pseudo-strong" and "pseudo-weak" scaling,
+which we will use to quantify the benefits of using the parareal algorithm in
+parallel compared to using the serial method (which is distinct from the
+parareal algorithm).
+
+It would also be nice to create some fancy animations comparing the speed of
+parareal to the speed of the serial implementation in a visual and very
+accessible way.
+
 ### Accuracy
 Accuracy will be measured by using the parareal algorithm on equations with
 analytical solutions, and comparing the numerical result with the analytical
@@ -155,7 +172,38 @@ I am not sure how to measure power consumption. One idea is just to measure the
 number of floating point and arithmetic operations performed by parareal
 compared to the serial algorithm, which we know analytically. On the other hand,
 there will also be overhead in the program, especially pertaining to
-implementation of parallelism, which will be more difficult to quantify. 
+implementation of parallelism, which will be more difficult to quantify. The
+best option may be to simply measure the total CPU time used. This will not
+correlate exactly to the power used by all the CPUs, but it would measure
+the resources used from the perspective of someone who wants to allocate
+available nodes in a high-performance computing center.  
+
+
+## Summary
+### Primary Goals
+These are the main goals of this project. Completing these tasks would
+constitute a successful project.
+1. Implement the parareal algorithm in C/C++ using OpenMP and/or MPI, or
+   possibly even utilizing GPUs through CUDA.
+2. Obtain performance faster than the serial implementation, but with the same
+   accuracy, on initial value problems relevant to some application area
+   (ideally Schrodinger's equation, but possibly other equations arising in
+   weather prediction or power grid management).
+3. Compare results of C/C++ implementation with results obtained using the
+   existing parareal package in Julia
+4. Compare efficacy of parareal across multiple classes of initial value
+   problems
+
+### Secondary Goals
+These are the secondary/optional goals of this project. They are either small
+but unintegral to the project, or large enough that they may be outside the
+scope of the project. Completing these tasks would costitute a very successful
+project, but the project can still succeed without them.
+1. Implement a hybrid-parareal-SDC method in Julia
+2. Make the method available as an open-source package
+3. Create fancy animations which illustrate the speedup of parareal compared to
+   serial methods.
+
 
 ## References
 Parareal Algorithm: https://www.semanticscholar.org/paper/The-parareal-in-time-algorithm-Maday/2d51619eb5d9a281cb26d48243a3ee5c7036e795
