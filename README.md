@@ -32,6 +32,7 @@ The basic premise is this:
 
 An illustration of the parareal algorithm:
 ![Parareal Algorithm](Parareal_Algorithm.jpg)
+
 (credit: https://en.wikipedia.org/wiki/Parareal)
 
 An interesting tradeoff to the parareal algorithm is that more computations are
