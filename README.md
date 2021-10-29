@@ -30,8 +30,8 @@ The basic premise is this:
    as more accurate initial values for each interval, resulting in more accurate
    solutions. Do this until acceptable accuracy is reached.
 
-An animation of the parareal algorithm:
-![Parareal Animation](Parareal_Animation.ogx)
+An illustration of the parareal algorithm:
+![Parareal Algorithm](Parareal_Algorithm.jpg)
 (credit: https://en.wikipedia.org/wiki/Parareal)
 
 An interesting tradeoff to the parareal algorithm is that more computations are
