@@ -10,7 +10,7 @@
  */
 
 #include <mpi.h>
-#include<iostream>
+#include <iostream>
 using std::cout; using std::endl;
 
 #define ROOT 0
@@ -23,6 +23,7 @@ struct parareal_prob {
     MPI_Datatype datatype;
     T (*coarse_solve)(T, double, double);
     T (*fine_solve)(T, double, double);
+    double (*norm)(T);
 
     parareal_prob(
         double init_t0,
@@ -30,6 +31,7 @@ struct parareal_prob {
         T uinit_u0,
         T (*init_coarse_solve)(T, double, double),
         T (*init_fine_solve)(T, double, double),
+        double (*init_norm)(T),
         MPI_Datatype initial_datatype
     );
 };
@@ -39,21 +41,21 @@ template <typename T>
 struct parareal_sol {
     int num_points;
     double *times;
+    int num_revisions = -1;
     T *points;
+
     parareal_sol();
     parareal_sol(parareal_prob<T> prob);
+    T * get_pts_rev(int revision);
 };
 
-void show_points(double *times, double *points, int num_points);
-
-double my_coarse_solve(double y, double t1, double t2);
-double my_fine_solve(double y, double t1, double t2);
 
 template <typename T>
 void solve_parareal(
-        const parareal_prob<T> &prob,
-        parareal_sol<T> &sol,
-        bool show_progress=false
+    const parareal_prob<T> &prob,
+    parareal_sol<T> &sol,
+    double tolerance=0.5,
+    bool show_progress=true
 );
 
 
@@ -64,6 +66,7 @@ parareal_prob<T>::parareal_prob(
             T init_u0,
             T (*init_coarse_solve)(T, double, double),
             T (*init_fine_solve)(T, double, double),
+            double (*init_norm)(T),
             MPI_Datatype initial_datatype
             )
 {
@@ -72,6 +75,7 @@ parareal_prob<T>::parareal_prob(
         u0 = init_u0;
         coarse_solve = init_coarse_solve;
         fine_solve = init_fine_solve;
+        norm = init_norm;
         datatype = initial_datatype;
 };
 
@@ -87,14 +91,14 @@ template <typename T>
 parareal_sol<T>::parareal_sol(){
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
-    if (my_rank != ROOT)
-        num_points = 0;
-    else {
-        MPI_Comm_size(MPI_COMM_WORLD,&num_points);
-        num_points += 1;
-    }
+    MPI_Comm_size(MPI_COMM_WORLD,&num_points);
+    num_points += 1;
+
+    // Allocate memory
     times = new double[num_points];
-    points = new T[num_points];
+    // Only allocate memory for points on root
+    if (my_rank == ROOT)
+        points = new T[num_points*num_points]; // Parareal is guarunteed to converge in at most N updates, although in this case there is no speedup
 };
 
 /*
@@ -115,6 +119,11 @@ parareal_sol<T>::parareal_sol(parareal_prob<T> prob){
     solve_parareal(prob, *this);
 };
 
+template <typename T>
+T * parareal_sol<T>::get_pts_rev(int revision){
+    return &(this->points[revision * this->num_points]);
+};
+
 
 /*
  * The actual parareal solver
@@ -123,6 +132,7 @@ template <typename T>
 void solve_parareal(
         const parareal_prob<T> &prob,
         parareal_sol<T> &sol,
+        double tolerance,
         bool show_progress // Note that the default value can only be in the header file
         )
 {
@@ -136,7 +146,7 @@ void solve_parareal(
 
     // Set up times, helper arrays
     if (my_rank == ROOT) {
-        points_prev_rev = new T[sol.num_points];
+        //points_prev_rev = new T[sol.num_points];
         points_fine_update = new T[sol.num_points];
 
         // Set up times
@@ -146,34 +156,35 @@ void solve_parareal(
         for (int i=1; i < sol.num_points-1; ++i)
             sol.times[i] = sol.times[i-1] + coarse_dt;
 
-        // Set up first coarse point revision
-        sol.points[0] = prob.u0; // Initial value
-        for (int i=0; i < sol.num_points-1; ++i)
-            sol.points[i+1] = prob.coarse_solve(sol.points[i], sol.times[i], sol.times[i+1]);
-        for (int i=0; i < sol.num_points; ++i)
-            points_prev_rev[i] = sol.points[i];
+        // Set up initial value for each revision (same across all revisions)
+        for (int k=0; k < sol.num_points; ++k)
+            sol.get_pts_rev(k)[0] = prob.u0;
 
-        // Check first coarse solve
-        if (show_progress) {
-            cout << "After first coarse solve:\n";
-            show_points(sol.times, sol.points, sol.num_points);
-        }
+        // Set up first coarse point revision
+        T *pts_init_rev = sol.get_pts_rev(0);
+        for (int i=0; i < sol.num_points-1; ++i)
+            pts_init_rev[i+1] = prob.coarse_solve(pts_init_rev[i], sol.times[i], sol.times[i+1]);
     }
 
     // Variables for this process' fine solving
     double loc_t1;
     double loc_t2;
-    double loc_y1;
-    double loc_y2;
+    T loc_y1;
+    T loc_y2;
 
     // Scatter times (these will remain constant across all iterations)
     MPI_Scatter(sol.times, 1, prob.datatype, &loc_t1, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
     MPI_Scatter(&sol.times[1], 1, prob.datatype, &loc_t2, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
 
-    // Arbitrary number of revisions for now
-    for (int k=0; k < 10; ++k) {
+    bool close_enough = false;
+    T *pts_prev_rev;
+    T *pts_curr_rev;
+    // Arbitrary number of revisions for now - should change to max num_points, but also check for final part changing by less than machine epsilon
+    // Will need some sort of norm function in order to compare with machine epsilon
+    for (int k = 1; k < sol.num_points; ++k) {
+        sol.num_revisions = k;
         // Scatter current revision of major points
-        MPI_Scatter(sol.points, 1, prob.datatype, &loc_y1, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
+        MPI_Scatter(sol.get_pts_rev(k-1), 1, prob.datatype, &loc_y1, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
 
         loc_y2 = prob.fine_solve(loc_y1, loc_t1, loc_t2);
 
@@ -182,23 +193,22 @@ void solve_parareal(
 
         // Do the update
         if (my_rank == ROOT) {
-            double next_y_prev_rev = sol.points[1];
-            double curr_y_prev_rev = sol.points[0];
-            for (int i=0; i < sol.num_points-1; ++i) {
-                next_y_prev_rev = sol.points[i+1];
-                sol.points[i+1] = prob.coarse_solve(sol.points[i], sol.times[i], sol.times[i+1])
-                              + points_fine_update[i+1]
-                              - prob.coarse_solve(points_prev_rev[i], sol.times[i], sol.times[i+1]);
-                curr_y_prev_rev = next_y_prev_rev;
-            }
-            for (int i=0; i < sol.num_points; ++i)
-                points_prev_rev[i] = sol.points[i];
+            pts_prev_rev = sol.get_pts_rev(k-1);
+            pts_curr_rev = sol.get_pts_rev(k);
 
-            if (show_progress) {
-                cout << "After " << k << "-th revision:\n";
-                show_points(sol.times, sol.points, sol.num_points);
+            for (int i=0; i < sol.num_points-1; ++i) {
+                pts_curr_rev[i+1] = prob.coarse_solve(pts_curr_rev[i], sol.times[i], sol.times[i+1])
+                              + points_fine_update[i+1]
+                              - prob.coarse_solve(pts_prev_rev[i], sol.times[i], sol.times[i+1]);
             }
+
+            double delta = prob.norm(pts_curr_rev[sol.num_points-1] - pts_prev_rev[sol.num_points-1]);
+            if (delta < 0.5)
+                close_enough = true;
         }
+        MPI_Bcast(&close_enough, 1, MPI_CXX_BOOL, ROOT, MPI_COMM_WORLD);
+        if (close_enough)
+            break;
     }
 }
 
@@ -210,6 +220,7 @@ void solve_parareal_serial(
         )
 {
     sol.points[0] = prob.u0;
+    sol.num_revisions = 0;
     for (int i=0; i < prob.num_points-1; ++i)
         sol.points[i+1] = prob.fine_solve(sol.points[i], sol.times[i], sol.times[i+1]);
 }

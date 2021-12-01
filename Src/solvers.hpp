@@ -21,15 +21,4 @@ T my_fine_solve(T y, double t1, double t2) {
     return y;
 }
 
-
-void show_points(double *times, double *points, int num_points) {
-    cout << "t";
-    for (int i=0; i < num_points; ++i)
-        cout << "\t" << times[i];
-    cout << endl;
-    cout << "u(t)";
-    for (int i=0; i < num_points; ++i)
-        cout << "\t" << points[i];
-    cout << endl;
-}
 #endif
