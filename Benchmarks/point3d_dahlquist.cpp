@@ -73,23 +73,16 @@ int main(int argc, char **argv) {
     point3D init_pt = point3D(1.0, 2.0, 3.0);
     parareal_prob<point3D> prob = parareal_prob<point3D>(0.0, 1.0, init_pt, my_coarse_solve<point3D>, my_fine_solve<point3D>, norm_point3D, MPI_POINT3D);
 
-    parareal_sol<point3D> sol = parareal_sol<point3D>();
-    solve_parareal<point3D>(prob, sol);
+    parareal_sol<point3D> sol = parareal_sol<point3D>(prob);
 
-    parareal_sol<point3D> serial_sol = parareal_sol<point3D>();
+    parareal_sol<point3D> serial_sol = parareal_sol<point3D>(prob, true);
 
-
-    //parareal_sol<point3D> sol = parareal_sol<point3D>(prob);
 
     if (my_rank == ROOT) {
-        solve_parareal_serial<point3D>(prob, serial_sol);
         cout << "ParaReal" << endl;
         display_solution_csv<point3D>(sol);
-        //for (int k=0; k <= sol.num_revisions; ++k)
-        //    show_points(sol.times, sol.get_pts_rev(k), sol.num_points);
         cout << "Serial" << endl;
         display_solution_csv<point3D>(serial_sol);
-        //show_points(serial_sol.times, serial_sol.get_pts_rev(0), serial_sol.num_points);
     }
 
     MPI_Finalize();

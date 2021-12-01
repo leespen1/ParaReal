@@ -45,7 +45,7 @@ struct parareal_sol {
     T *points;
 
     parareal_sol();
-    parareal_sol(parareal_prob<T> prob);
+    parareal_sol(parareal_prob<T> prob, bool serial=false);
     T * get_pts_rev(int revision);
 };
 
@@ -104,18 +104,20 @@ parareal_sol<T>::parareal_sol(){
  * A way to solve a parareal problem right off the bat
  */
 template <typename T>
-parareal_sol<T>::parareal_sol(parareal_prob<T> prob){
+parareal_sol<T>::parareal_sol(parareal_prob<T> prob, bool serial){
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
-    if (my_rank != ROOT)
-        num_points = 0;
-    else {
-        MPI_Comm_size(MPI_COMM_WORLD,&num_points);
-        num_points += 1;
+    MPI_Comm_size(MPI_COMM_WORLD,&num_points);
+    num_points += 1;
+    if (my_rank == ROOT) {
+        times = new double[num_points];
+        points = new T[num_points*num_points];
     }
-    times = new double[num_points];
-    points = new T[num_points];
-    solve_parareal(prob, *this);
+
+    if (serial)
+        solve_parareal_serial(prob, *this);
+    else
+        solve_parareal(prob, *this);
 };
 
 template <typename T>
@@ -216,19 +218,23 @@ void solve_parareal_serial(
         parareal_sol<T> &sol
         )
 {
-    // Set up initial condition
-    sol.points[0] = prob.u0;
-    // Set up times
-    sol.times[0] = prob.t0;
-    sol.times[sol.num_points-1] = prob.tf;
-    double coarse_dt = double(prob.tf-prob.t0)/(sol.num_points-1);
-    for (int i=1; i < sol.num_points-1; ++i)
-        sol.times[i] = sol.times[i-1] + coarse_dt;
+    int my_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
+    // Only root needs to do anything
+    if (my_rank == ROOT) {
+        // Set up initial condition
+        sol.points[0] = prob.u0;
+        // Set up times
+        sol.times[0] = prob.t0;
+        sol.times[sol.num_points-1] = prob.tf;
+        double coarse_dt = double(prob.tf-prob.t0)/(sol.num_points-1);
+        for (int i=1; i < sol.num_points-1; ++i)
+            sol.times[i] = sol.times[i-1] + coarse_dt;
 
-    // Do the solve
-    sol.num_revisions = 0;
-    for (int i=0; i < sol.num_points-1; ++i) {
-        sol.points[i+1] = prob.fine_solve(sol.points[i], sol.times[i], sol.times[i+1]);
+        // Do the solve
+        sol.num_revisions = 0;
+        for (int i=0; i < sol.num_points-1; ++i)
+            sol.points[i+1] = prob.fine_solve(sol.points[i], sol.times[i], sol.times[i+1]);
     }
 }
 
