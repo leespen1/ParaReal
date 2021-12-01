@@ -17,7 +17,7 @@ T my_fine_solve(T y, double t1, double t2) {
     int N = 25;
     double dt = (t2-t1)/N;
     for (int i=0; i < N; ++i)
-        y += y*dt; 
+        y = y + y*dt; // Not using += means I have one less operator to overload
     return y;
 }
 

@@ -5,9 +5,9 @@
 #include<iostream>
 using std::cout; using std::endl;
 #include<cmath>
+using std::pow;
 
 #define ROOT 0
-
 int main(int argc, char **argv) {
     cout.precision(10);
 
@@ -25,15 +25,23 @@ int main(int argc, char **argv) {
     parareal_sol<double> sol = parareal_sol<double>();
     solve_parareal<double>(prob, sol);
 
+    parareal_sol<double> serial_sol = parareal_sol<double>();
+
+
     //parareal_sol<double> sol = parareal_sol<double>(prob);
 
     if (my_rank == ROOT) {
-        cout << "Number of Points: " << sol.num_points << endl;
-        cout << "Final Revision:\n";
-        show_points(sol.times, sol.get_pts_rev(sol.num_revisions), sol.num_points);
+        solve_parareal_serial<double>(prob, serial_sol);
+        cout << "ParaReal" << endl;
+        display_solution_csv<double>(sol);
+        //for (int k=0; k <= sol.num_revisions; ++k)
+        //    show_points(sol.times, sol.get_pts_rev(k), sol.num_points);
+        cout << "Serial" << endl;
+        display_solution_csv<double>(serial_sol);
+        //show_points(serial_sol.times, serial_sol.get_pts_rev(0), serial_sol.num_points);
     }
     //MPI_Datatype my_datatype = MPI::COMPLEX;
-
+    
     MPI_Finalize();
     return 0;
 }

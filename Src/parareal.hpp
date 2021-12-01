@@ -54,8 +54,7 @@ template <typename T>
 void solve_parareal(
     const parareal_prob<T> &prob,
     parareal_sol<T> &sol,
-    double tolerance=0.5,
-    bool show_progress=true
+    double tolerance=0.00001
 );
 
 
@@ -132,8 +131,7 @@ template <typename T>
 void solve_parareal(
         const parareal_prob<T> &prob,
         parareal_sol<T> &sol,
-        double tolerance,
-        bool show_progress // Note that the default value can only be in the header file
+        double tolerance
         )
 {
 
@@ -173,8 +171,8 @@ void solve_parareal(
     T loc_y2;
 
     // Scatter times (these will remain constant across all iterations)
-    MPI_Scatter(sol.times, 1, prob.datatype, &loc_t1, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
-    MPI_Scatter(&sol.times[1], 1, prob.datatype, &loc_t2, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
+    MPI_Scatter(sol.times, 1, MPI_DOUBLE, &loc_t1, 1, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
+    MPI_Scatter(&sol.times[1], 1, MPI_DOUBLE, &loc_t2, 1, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
 
     bool close_enough = false;
     T *pts_prev_rev;
@@ -215,14 +213,23 @@ void solve_parareal(
 template <typename T>
 void solve_parareal_serial(
         const parareal_prob<T> &prob,
-        parareal_sol<T> &sol,
-        bool show_progress // Note that the default value can only be in the header file
+        parareal_sol<T> &sol
         )
 {
+    // Set up initial condition
     sol.points[0] = prob.u0;
+    // Set up times
+    sol.times[0] = prob.t0;
+    sol.times[sol.num_points-1] = prob.tf;
+    double coarse_dt = double(prob.tf-prob.t0)/(sol.num_points-1);
+    for (int i=1; i < sol.num_points-1; ++i)
+        sol.times[i] = sol.times[i-1] + coarse_dt;
+
+    // Do the solve
     sol.num_revisions = 0;
-    for (int i=0; i < prob.num_points-1; ++i)
+    for (int i=0; i < sol.num_points-1; ++i) {
         sol.points[i+1] = prob.fine_solve(sol.points[i], sol.times[i], sol.times[i+1]);
+    }
 }
 
 #endif
