@@ -146,7 +146,6 @@ void solve_parareal(
 
     // Set up times, helper arrays
     if (my_rank == ROOT) {
-        //points_prev_rev = new T[sol.num_points];
         points_fine_update = new T[sol.num_points];
 
         // Set up times
@@ -183,7 +182,7 @@ void solve_parareal(
     // Will need some sort of norm function in order to compare with machine epsilon
     for (int k = 1; k < sol.num_points; ++k) {
         sol.num_revisions = k;
-        // Scatter current revision of major points
+
         MPI_Scatter(sol.get_pts_rev(k-1), 1, prob.datatype, &loc_y1, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
 
         loc_y2 = prob.fine_solve(loc_y1, loc_t1, loc_t2);
