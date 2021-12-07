@@ -97,7 +97,7 @@ template <int N>
 std::ostream &operator<<(std::ostream &os, const pointND<N>& pt) {
     os << "[";
     for (int i=0; i < pt.size-1; ++i)
-        os << pt(i) << ",";
+        os << pt(i) << ";";
     os << pt(pt.size-1) << "]";
     return os;
 }

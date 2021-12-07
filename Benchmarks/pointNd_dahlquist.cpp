@@ -15,7 +15,7 @@ using std::begin; using std::end;
 
 
 int main(int argc, char **argv) {
-    cout.precision(10);
+    cout.precision(15); // Doubles have 15-digit precision
 
     MPI_Init(NULL,NULL);
 
@@ -23,15 +23,12 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD,&num_ranks);
     MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
 
-    if (my_rank == ROOT)
-        cout << endl;
-
+    //if (my_rank == ROOT)
+    //    cout << endl;
 
     const int N = 3;
     double init_pt_data[N] = {1.0, 2.0, 3.0};
     pointND<N> init_pt = pointND<N>(init_pt_data);
-
-
 
     MPI_Datatype MPI_POINTND;
     make_pointND_MPI_Datatype(N, &MPI_POINTND);
@@ -43,10 +40,15 @@ int main(int argc, char **argv) {
     parareal_sol<pointND<N>> serial_sol = parareal_sol<pointND<N>>(prob, true);
 
     if (my_rank == ROOT) {
+        //cout << "ParaReal" << endl;
+        //display_solution_csv<pointND<N>>(sol);
+        //cout << "Serial" << endl;
+        //display_solution_csv<pointND<N>>(serial_sol);
+
         cout << "ParaReal" << endl;
-        display_solution_csv<pointND<N>>(sol);
+        display_solution_csv_2<pointND<N>>(sol);
         cout << "Serial" << endl;
-        display_solution_csv<pointND<N>>(serial_sol);
+        display_solution_csv_2<pointND<N>>(serial_sol);
     }
 
     MPI_Finalize();
