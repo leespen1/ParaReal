@@ -14,7 +14,7 @@ T my_coarse_solve(T y, double t1, double t2) {
 template <typename T>
 T my_fine_solve(T y, double t1, double t2) {
     // Mult-time step explicit euler
-    int N = 25;
+    int N = 100;
     double dt = (t2-t1)/N;
     for (int i=0; i < N; ++i)
         y = y + y*dt; // Not using += means I have one less operator to overload
