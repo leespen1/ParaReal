@@ -21,16 +21,12 @@ struct parareal_prob {
     double tf;
     T u0;
     MPI_Datatype datatype;
-    T (*coarse_solve)(T, double, double);
-    T (*fine_solve)(T, double, double);
     double (*norm)(T);
 
     parareal_prob(
         double init_t0,
         double init_tf,
         T uinit_u0,
-        T (*init_coarse_solve)(T, double, double),
-        T (*init_fine_solve)(T, double, double),
         double (*init_norm)(T),
         MPI_Datatype initial_datatype
     );
@@ -64,8 +60,6 @@ parareal_prob<T>::parareal_prob(
             double init_t0,
             double init_tf,
             T init_u0,
-            T (*init_coarse_solve)(T, double, double),
-            T (*init_fine_solve)(T, double, double),
             double (*init_norm)(T),
             MPI_Datatype initial_datatype
             )
@@ -73,8 +67,6 @@ parareal_prob<T>::parareal_prob(
         t0 = init_t0;
         tf = init_tf;
         u0 = init_u0;
-        coarse_solve = init_coarse_solve;
-        fine_solve = init_fine_solve;
         norm = init_norm;
         datatype = initial_datatype;
 };
@@ -105,6 +97,7 @@ parareal_sol<T>::parareal_sol(){
 /*
  * A way to solve a parareal problem right off the bat
  */
+/* Getting rid of it because it's too difficult to maintain
 template <typename T>
 parareal_sol<T>::parareal_sol(parareal_prob<T> prob, bool serial){
     int my_rank;
@@ -122,6 +115,7 @@ parareal_sol<T>::parareal_sol(parareal_prob<T> prob, bool serial){
     else
         solve_parareal(prob, *this);
 };
+*/
 
 template <typename T>
 T * parareal_sol<T>::get_pts_rev(int revision){
@@ -132,11 +126,13 @@ T * parareal_sol<T>::get_pts_rev(int revision){
 /*
  * The actual parareal solver
  */
-template <typename T>
+template <typename T, typename f_coarse, typename f_fine>
 void solve_parareal(
         const parareal_prob<T> &prob,
         parareal_sol<T> &sol,
-        double tolerance
+        double tolerance,
+        f_coarse coarse_solve,
+        f_fine fine_solve
         )
 {
 
@@ -185,7 +181,7 @@ void solve_parareal(
         // Set up first coarse point revision
         T *pts_init_rev = sol.get_pts_rev(0);
         for (int i=0; i < sol.num_points-1; ++i)
-            pts_init_rev[i+1] = prob.coarse_solve(pts_init_rev[i], sol.times[i], sol.times[i+1]);
+            pts_init_rev[i+1] = coarse_solve(pts_init_rev[i], sol.times[i], sol.times[i+1]);
 
         sol.sol_durations[0] = MPI_Wtime() - start_time;
     }
@@ -197,7 +193,7 @@ void solve_parareal(
 
         MPI_Scatter(sol.get_pts_rev(k-1), 1, prob.datatype, &loc_y1, 1, prob.datatype, ROOT, MPI_COMM_WORLD);
 
-        loc_y2 = prob.fine_solve(loc_y1, loc_t1, loc_t2);
+        loc_y2 = fine_solve(loc_y1, loc_t1, loc_t2);
 
         // Gather fine points for the update
         MPI_Gather(&loc_y2, 1, prob.datatype, &points_fine_update[1], 1, prob.datatype, ROOT, MPI_COMM_WORLD);
@@ -208,9 +204,9 @@ void solve_parareal(
             pts_curr_rev = sol.get_pts_rev(k);
 
             for (int i=0; i < sol.num_points-1; ++i) {
-                pts_curr_rev[i+1] = prob.coarse_solve(pts_curr_rev[i], sol.times[i], sol.times[i+1])
+                pts_curr_rev[i+1] = coarse_solve(pts_curr_rev[i], sol.times[i], sol.times[i+1])
                               + points_fine_update[i+1]
-                              - prob.coarse_solve(pts_prev_rev[i], sol.times[i], sol.times[i+1]);
+                              - coarse_solve(pts_prev_rev[i], sol.times[i], sol.times[i+1]);
             }
 
             sol.sol_durations[k] = MPI_Wtime() - start_time;
@@ -225,10 +221,11 @@ void solve_parareal(
     }
 }
 
-template <typename T>
+template <typename T, typename f_fine>
 void solve_parareal_serial(
         const parareal_prob<T> &prob,
-        parareal_sol<T> &sol
+        parareal_sol<T> &sol,
+        f_fine fine_solve
         )
 {
     int my_rank;
@@ -249,7 +246,7 @@ void solve_parareal_serial(
         // Do the solve
         sol.num_revisions = 0;
         for (int i=0; i < sol.num_points-1; ++i)
-            sol.points[i+1] = prob.fine_solve(sol.points[i], sol.times[i], sol.times[i+1]);
+            sol.points[i+1] = fine_solve(sol.points[i], sol.times[i], sol.times[i+1]);
         sol.sol_durations[0] = MPI_Wtime() - start_time;
     }
 }

@@ -21,4 +21,13 @@ T my_fine_solve(T y, double t1, double t2) {
     return y;
 }
 
+template <typename T>
+T exp_euler(T &y, double &t1, double &t2, int N=1) {
+    // Mult-time step explicit euler
+    double dt = (t2-t1)/N;
+    for (int i=0; i < N; ++i)
+        y = y + y*dt; // Not using += means I have one less operator to overload
+    return y;
+}
+
 #endif
