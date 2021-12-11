@@ -36,13 +36,14 @@ struct parareal_prob {
 template <typename T>
 struct parareal_sol {
     int num_points;
-    double *times;
-    double *sol_durations;
+    double *times = NULL;
+    double *sol_durations = NULL;
     int num_revisions = -1;
-    T *points;
+    T *points = NULL;
 
     parareal_sol();
     parareal_sol(parareal_prob<T> prob, bool serial=false);
+    ~parareal_sol();
     T * get_pts_rev(int revision);
 };
 
@@ -92,6 +93,14 @@ parareal_sol<T>::parareal_sol(){
         sol_durations = new double[num_points];
         points = new T[num_points*num_points]; // Parareal is guarunteed to converge in at most N updates, although in this case there is no speedup
     }
+};
+
+template <typename T>
+parareal_sol<T>::~parareal_sol(){
+    // DeAllocate memory, only for root
+    delete[] times;
+    delete[] sol_durations;
+    delete[] points;
 };
 
 /*
@@ -219,6 +228,9 @@ void solve_parareal(
         if (close_enough)
             break;
     }
+    // DeAllocate memory
+    if (my_rank == ROOT)
+        delete[] points_fine_update;
 }
 
 template <typename T, typename f_fine>

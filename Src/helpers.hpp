@@ -7,7 +7,7 @@
 using std::cout; using std::endl;
 
 template <typename T>
-void display_solution_csv(parareal_sol<T> sol) {
+void display_solution_csv(parareal_sol<T> &sol) {
 
     cout << "Times,";
     for (int i =0; i < sol.num_points; ++i) {
@@ -32,7 +32,7 @@ void display_solution_csv(parareal_sol<T> sol) {
 }
 
 template <typename T>
-void display_solution_csv_2(parareal_sol<T> sol) {
+void display_solution_csv_2(parareal_sol<T> &sol) {
     cout << "Duration,Solution\n";
     for (int i=0; i <= sol.num_revisions; ++i) {
         cout << sol.sol_durations[i] << ","
