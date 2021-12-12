@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     int num_fine_solves, num_runs, f_solves_per_rank;
     const int N = 2;
     double init_pt_data[N];
-    double t1, t2;
+    double t0, tf;
 
     MPI_Init(&argc, &argv);
 
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     if (argc != 7 && argc != 11) {
         if (my_rank == ROOT)
-            cout << "Usage: program_name num_fine_solve num_runs [x1 x2 <2 entries of initial value>] [t1 t2 <start and end time>] [a b c d <four entries of 2x2 matrix>]\n";
+            cout << "Usage: program_name num_fine_solve num_runs [x1 x2 <2 entries of initial value>] [t0 tf <start and end time>] [a b c d <four entries of 2x2 matrix>]\n";
         MPI_Finalize();
         return 0;
     }
@@ -65,8 +65,8 @@ int main(int argc, char *argv[]) {
     init_pt_data[1] = atof(argv[4]);
     pointND<N> init_pt = pointND<N>(init_pt_data);
 
-    t1 = atof(argv[5]);
-    t1 = atof(argv[6]);
+    t0 = atof(argv[5]);
+    tf = atof(argv[6]);
 
     // Set up derivative matrix if user specified non-default
     if (argc == 11) {
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
     // Create parareal problem
     parareal_prob<pointND<N>> prob = parareal_prob<pointND<N>>(
-        t1, t2, init_pt,
+        t0, tf, init_pt,
         norm_pointND<N>,
         MPI_POINTND
     );
@@ -142,8 +142,8 @@ int main(int argc, char *argv[]) {
         cout.precision(15); // Doubles have 15-digit precision
         cout << "Num Ranks: " << num_ranks << endl;
         cout << "Fine Solvers Per Rank: " << f_solves_per_rank << endl;
-        cout << "u0 = (" << init_pt(0) "," << init_pt(1) << ")\n"
-        cout << "t0 = " << t1 << "," << " tf = " << t2 << endl; 
+        cout << "u0 = (" << init_pt(0) << "," << init_pt(1) << ")\n";
+        cout << "t0 = " << t0 << "," << " tf = " << tf << endl; 
         cout << "u' = (" << g_derivative_matrix(0, 0) << "," << g_derivative_matrix(0, 1) << ";"
                          << g_derivative_matrix(1, 0) << "," << g_derivative_matrix(1, 1) << ")u\n";
         cout << "ParaReal" << endl;
