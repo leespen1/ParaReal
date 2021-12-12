@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     //    cout << endl;
 
     //int num_fine_solves = 1000/num_ranks;
-    int num_fine_solves = 50/num_ranks;
+    int num_fine_solves = 100/num_ranks;
     const int N = 2;
     double init_pt_data[N] = {1.0, 2.0};
     pointND<N> init_pt = pointND<N>(init_pt_data);
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
     parareal_sol<pointND<N>> dummy_sol; // Just 
 
-    #define NUM_RUNS 100
+    #define NUM_RUNS 100000
     int num_points = dummy_sol.num_points;
 
     double parareal_sol_durations_avg[num_points];
@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
         serial_sol.sol_durations[0] = serial_sol_duration_avg;
 
         // Display Results
+        cout << "Num Ranks: " << num_ranks << endl;
         cout << "ParaReal" << endl;
         display_solution_csv_2(sol); // Apparently don't have to provide template arguments if compiler can deduce type
         cout << "Serial" << endl;
@@ -110,5 +111,4 @@ int main(int argc, char **argv) {
     MPI_Finalize();
     return 0;
 }
-
 

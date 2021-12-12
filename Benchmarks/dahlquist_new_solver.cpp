@@ -40,8 +40,8 @@ int main(int argc, char **argv) {
         MPI_POINTND
     );
 
-    parareal_sol<pointND<N>> sol = parareal_sol<pointND<N>>();
-    parareal_sol<pointND<N>> serial_sol = parareal_sol<pointND<N>>();
+    parareal_sol<pointND<N>> sol;
+    parareal_sol<pointND<N>> serial_sol;
 
     solve_parareal(
         prob, sol, 0,
