@@ -1,7 +1,7 @@
 #ifndef HELPERS_HPP
 #define HELPERS_HPP
 
-#include "/home/spencer/GradSchool/ParallelComputing/FinalProject/ParaReal/Src/parareal.hpp"
+#include "parareal.hpp"
 
 #include<iostream>
 using std::cout; using std::endl;
