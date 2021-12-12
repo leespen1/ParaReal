@@ -55,13 +55,13 @@ struct pointND {
 
     // Not sure why I need both overloads of the '()' operator
     double operator()(int i) const {
-        if (i > this->size || i < 0)
+        if (i >= this->size || i < 0)
             throw "Index for pointND is out of bounds";
         return this->data[i];
     }
 
     double& operator()(int i) {
-        if (i > this->size || i < 0)
+        if (i >= this->size || i < 0)
             throw "Index for pointND is out of bounds";
         return this->data[i];
     }
@@ -136,8 +136,9 @@ struct matrixND {
 
     matrixND& operator=(const matrixND& mat) {
         this->check_size_equal(mat);
-        for (int i = 0; i < this->size; ++i)
-            this->data[i] = mat.data[i];
+        for (int i = 0; i < this->num_rows; ++i)
+            for (int j = 0; j < this->num_cols; ++j)
+            this->data[i][j] = mat.data[i][j];
         return *this;
     }
 
@@ -165,29 +166,29 @@ struct matrixND {
     }
 
     double& operator()(int i, int j) const {
-        if (i > this->num_rows || i < 0)
+        if (i >= this->num_rows || i < 0)
             throw "Row index for matrixND is out of bounds";
-        if (j > this->num_cols || j < 0)
+        if (j >= this->num_cols || j < 0)
             throw "Col index for matrixND is out of bounds";
         return this->data[i][j];
     }
 
     double& operator()(int i, int j) {
-        if (i > this->num_rows || i < 0)
+        if (i >= this->num_rows || i < 0)
             throw "Row index for matrixND is out of bounds";
-        if (j > this->num_cols || j < 0)
+        if (j >= this->num_cols || j < 0)
             throw "Col index for matrixND is out of bounds";
         return this->data[i][j];
     }
 
     double operator()(int i) const {
-        if (i > this->size || i < 0)
+        if (i >= this->size || i < 0)
             throw "Index for pointND is out of bounds";
         return this->data[i];
     }
 
     double& operator()(int i) {
-        if (i > this->size || i < 0)
+        if (i >= this->size || i < 0)
             throw "Index for pointND is out of bounds";
         return this->data[i];
     }
